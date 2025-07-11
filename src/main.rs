@@ -30,14 +30,16 @@ struct BindingValue {
 /// SPARQL endpoint URL for the LINDAS platform
 const SPARQL_ENDPOINT: &str = "https://lindas.admin.ch/query";
 
-/// SPARQL query to fetch latest water temperature for station 2104
+/// SPARQL query to fetch station name and latest water temperature for station 2104
 const SPARQL_QUERY: &str = r#"
 PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PREFIX station: <https://environment.ld.admin.ch/foen/hydro/station/>
 PREFIX riverOberservation: <https://environment.ld.admin.ch/foen/hydro/river/observation/>
 PREFIX dimension: <https://environment.ld.admin.ch/foen/hydro/dimension/>
 
-SELECT ?time ?temperature WHERE {
+SELECT ?name ?time ?temperature WHERE {
+    station:2104 <http://schema.org/name> ?name .
     riverOberservation:2104
         dimension:waterTemperature ?temperature ;
         dimension:measurementTime ?time .
@@ -77,27 +79,34 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         .json()
         .await
         .map_err(|e| format!("Failed to parse JSON response: {}", e))?;
-    println!("{:?}", sparql_response);
+
+    let total_records = sparql_response.results.bindings.len();
 
     // Print results
     println!("\nResults:");
-    println!("{:<25} {:<15}", "Time", "Temperature (°C)");
-    println!("{}", "-".repeat(45));
+    println!(
+        "{:<30} {:<25} {:<15}",
+        "Station Name", "Time", "Temperature (°C)"
+    );
+    println!("{}", "-".repeat(75));
 
-    if sparql_response.results.bindings.is_empty() {
+    if total_records == 0 {
         println!("No temperature data found for station 2104.");
         return Ok(());
     }
 
     for binding in sparql_response.results.bindings {
+        let name = binding.get("name").map_or("N/A", |v| v.value.as_str());
         let time = binding.get("time").map_or("N/A", |v| v.value.as_str());
 
         let temperature = binding
             .get("temperature")
             .map_or("N/A", |v| v.value.as_str());
 
-        println!("{:<25} {:<15}", time, temperature);
+        println!("{:<30} {:<25} {:<15}", name, time, temperature);
     }
+
+    println!("\nTotal records found: {}", total_records);
 
     Ok(())
 }

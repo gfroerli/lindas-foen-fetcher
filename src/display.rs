@@ -14,9 +14,12 @@ pub fn print_table_header() {
 
 /// Prints a single measurement row
 pub fn print_measurement_row(measurement: &StationMeasurement) {
+    let formatted_time = measurement.time.format("%Y-%m-%d %H:%M:%S %z").to_string();
+    let formatted_temperature = format!("{:.3}", measurement.temperature);
+
     println!(
         "{:<10} {:<30} {:<25} {:<15}",
-        measurement.station_id, measurement.station_name, measurement.time, measurement.temperature
+        measurement.station_id, measurement.station_name, formatted_time, formatted_temperature
     );
 }
 

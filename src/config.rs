@@ -10,6 +10,15 @@ use serde::{Deserialize, Serialize};
 pub struct Config {
     /// List of station configurations
     pub stations: Vec<StationConfig>,
+    /// Gfrörli API configuration
+    pub gfroerli_api: GfroerliConfig,
+}
+
+/// Gfrörli configuration
+#[derive(Debug, Deserialize, Serialize)]
+pub struct GfroerliConfig {
+    /// Gfrörli private API key
+    pub api_key: String,
 }
 
 /// Station configuration with FOEN station ID and Gfrörli sensor ID mapping
@@ -74,6 +83,9 @@ mod tests {
                     gfroerli_sensor_id: 2,
                 },
             ],
+            gfroerli_api: GfroerliConfig {
+                api_key: "test-api-key".to_string(),
+            },
         };
         let toml_str = toml::to_string(&config).unwrap();
         let deserialized: Config = toml::from_str(&toml_str).unwrap();
@@ -102,6 +114,9 @@ mod tests {
                     gfroerli_sensor_id: 2,
                 },
             ],
+            gfroerli_api: GfroerliConfig {
+                api_key: "test-api-key".to_string(),
+            },
         };
 
         // Clean up any existing test file

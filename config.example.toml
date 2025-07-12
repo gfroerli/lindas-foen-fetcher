@@ -1,3 +1,6 @@
+[gfroerli_api]
+api_key = "gfroerli-exmaple-api-key"
+
 # Linth, Weesen
 [[stations]]
 foen_station_id = 2104

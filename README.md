@@ -13,7 +13,7 @@ needed.
 
 The station IDs correspond to Swiss hydrological monitoring stations. You can
 find all available stations at:
-https://www.hydrodaten.admin.ch/en/seen-und-fluesse/stations
+<https://www.hydrodaten.admin.ch/en/seen-und-fluesse/stations#temperature>
 
 ## Build & Commands
 

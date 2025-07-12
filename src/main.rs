@@ -9,6 +9,8 @@ mod display;
 mod parsing;
 mod sparql;
 
+use clap::Parser;
+
 use config::Config;
 use display::{
     print_error_summary, print_measurement_row, print_no_data_message, print_summary,
@@ -16,6 +18,15 @@ use display::{
 };
 use parsing::StationMeasurement;
 use sparql::get_station_measurements;
+
+/// Command line arguments
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct Args {
+    /// Path to configuration file
+    #[arg(short, long, default_value = "config.toml")]
+    config: String,
+}
 
 /// Fetches all station data and handles errors appropriately
 async fn fetch_all_station_data(
@@ -50,9 +61,11 @@ async fn fetch_all_station_data(
 /// Main application entry point
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let args = Args::parse();
+
     // Load configuration
-    let config = Config::load_from_file("config.toml")
-        .map_err(|e| format!("Failed to load config.toml: {e}"))?;
+    let config = Config::load_from_file(&args.config)
+        .map_err(|e| format!("Failed to load config at {}: {e}", args.config))?;
 
     let station_ids = config.foen_station_ids();
 

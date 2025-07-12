@@ -34,4 +34,6 @@ Before committing, always run:
 
 ## License
 
-This project is licensed under the same terms as the parent Gfrörli project.
+Copyright © 2025 Coredump Hackerspace.
+
+Licensed under the AGPLv3 or later, see `LICENSE.md`.

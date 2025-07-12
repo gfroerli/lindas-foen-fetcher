@@ -2,6 +2,7 @@
 name = "lindas-foen-fetcher"
 description = "Fetch water temperature measurements from the BAFU/FOEN LINDAS endpoint and forward them to the Gfrörli database."
 version = "0.1.0"
+license = "AGPL-3.0-or-later"
 edition = "2024"
 
 [dependencies]

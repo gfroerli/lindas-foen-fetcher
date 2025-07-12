@@ -8,15 +8,17 @@ use serde::{Deserialize, Serialize};
 /// Main configuration structure
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
-    /// Station configuration
-    pub stations: StationConfig,
+    /// List of station configurations
+    pub stations: Vec<StationConfig>,
 }
 
-/// Station configuration section
+/// Station configuration with FOEN station ID and Gfrörli sensor ID mapping
 #[derive(Debug, Deserialize, Serialize)]
 pub struct StationConfig {
-    /// List of station IDs to query for water temperature data
-    pub ids: Vec<u32>,
+    /// FOEN hydrological station ID
+    pub foen_station_id: u32,
+    /// Gfrörli sensor ID
+    pub gfroerli_sensor_id: u32,
 }
 
 impl Config {
@@ -25,6 +27,30 @@ impl Config {
         let content = fs::read_to_string(path)?;
         let config: Config = toml::from_str(&content)?;
         Ok(config)
+    }
+
+    /// Get all FOEN station IDs
+    pub fn foen_station_ids(&self) -> Vec<u32> {
+        self.stations
+            .iter()
+            .map(|station| station.foen_station_id)
+            .collect()
+    }
+
+    /// Get all Gfrörli sensor IDs
+    pub fn gfroerli_sensor_ids(&self) -> Vec<u32> {
+        self.stations
+            .iter()
+            .map(|station| station.gfroerli_sensor_id)
+            .collect()
+    }
+
+    /// Find Gfrörli sensor ID for a given FOEN station ID
+    pub fn find_gfroerli_sensor_id(&self, foen_station_id: u32) -> Option<u32> {
+        self.stations
+            .iter()
+            .find(|station| station.foen_station_id == foen_station_id)
+            .map(|station| station.gfroerli_sensor_id)
     }
 }
 
@@ -38,22 +64,44 @@ mod tests {
     #[test]
     fn test_config_serialization() {
         let config = Config {
-            stations: StationConfig {
-                ids: vec![2104, 2176],
-            },
+            stations: vec![
+                StationConfig {
+                    foen_station_id: 2104,
+                    gfroerli_sensor_id: 1,
+                },
+                StationConfig {
+                    foen_station_id: 2176,
+                    gfroerli_sensor_id: 2,
+                },
+            ],
         };
         let toml_str = toml::to_string(&config).unwrap();
         let deserialized: Config = toml::from_str(&toml_str).unwrap();
-        assert_eq!(config.stations.ids, deserialized.stations.ids);
+        assert_eq!(config.stations.len(), deserialized.stations.len());
+        assert_eq!(
+            config.stations[0].foen_station_id,
+            deserialized.stations[0].foen_station_id
+        );
+        assert_eq!(
+            config.stations[0].gfroerli_sensor_id,
+            deserialized.stations[0].gfroerli_sensor_id
+        );
     }
 
     #[test]
     fn test_config_file_operations() {
         let test_file = PathBuf::from("test_config.toml");
         let test_config = Config {
-            stations: StationConfig {
-                ids: vec![2104, 2176],
-            },
+            stations: vec![
+                StationConfig {
+                    foen_station_id: 2104,
+                    gfroerli_sensor_id: 1,
+                },
+                StationConfig {
+                    foen_station_id: 2176,
+                    gfroerli_sensor_id: 2,
+                },
+            ],
         };
 
         // Clean up any existing test file
@@ -65,7 +113,11 @@ mod tests {
 
         // Load config from file
         let loaded_config = Config::load_from_file(&test_file).unwrap();
-        assert_eq!(loaded_config.stations.ids, test_config.stations.ids);
+        assert_eq!(loaded_config.stations.len(), test_config.stations.len());
+        assert_eq!(
+            loaded_config.stations[0].foen_station_id,
+            test_config.stations[0].foen_station_id
+        );
 
         // Clean up
         fs::remove_file(&test_file).unwrap();

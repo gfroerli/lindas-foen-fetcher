@@ -6,11 +6,14 @@ data from the FOEN (BAFU) over a SPARQL endpoint.
 
 ## Configuration
 
-Copy `config.example.toml` to `config.toml` and modify the station IDs as needed.
+Copy `config.example.toml` to `config.toml` and modify the station IDs as
+needed.
 
 ### Station IDs
 
-The station IDs correspond to Swiss hydrological monitoring stations. You can find all available stations at: https://www.hydrodaten.admin.ch/en/seen-und-fluesse/stations
+The station IDs correspond to Swiss hydrological monitoring stations. You can
+find all available stations at:
+https://www.hydrodaten.admin.ch/en/seen-und-fluesse/stations
 
 ## Build & Commands
 

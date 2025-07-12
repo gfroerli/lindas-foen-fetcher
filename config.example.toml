@@ -1,7 +1,14 @@
-[stations]
-# List of station IDs to query for water temperature data
-ids = [
-    2104, # Linth, Weesen
-    2176, # Sihl, Zürich
-    2135, # Aare, Bern
-]
+# Linth, Weesen
+[[stations]]
+foen_station_id = 2104
+gfroerli_sensor_id = 1
+
+# Sihl, Zürich
+[[stations]]
+foen_station_id = 2176
+gfroerli_sensor_id = 2
+
+# Aare, Bern
+[[stations]]
+foen_station_id = 2135
+gfroerli_sensor_id = 3

@@ -54,7 +54,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let config = Config::load_from_file("config.toml")
         .map_err(|e| format!("Failed to load config.toml: {e}"))?;
 
-    let station_ids = &config.stations.ids;
+    let station_ids = config.foen_station_ids();
 
     println!(
         "Fetching water temperature data for {} stations: {:?}...",
@@ -66,7 +66,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     print_table_header();
 
-    let (all_measurements, error_count) = fetch_all_station_data(&client, station_ids).await;
+    let (all_measurements, error_count) = fetch_all_station_data(&client, &station_ids).await;
 
     print_summary(all_measurements.len());
     print_error_summary(error_count);

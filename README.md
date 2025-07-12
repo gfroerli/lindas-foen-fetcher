@@ -1,0 +1,37 @@
+# LINDAS FOEN Fetcher
+
+This Rust application fetches open data from the [LINDAS
+service](https://lindas.admin.ch/). Specifically, it fetches water temperature
+data from the FOEN (BAFU) over a SPARQL endpoint.
+
+## Configuration
+
+Copy `config.example.toml` to `config.toml` and modify the station IDs as needed.
+
+### Station IDs
+
+The station IDs correspond to Swiss hydrological monitoring stations. You can find all available stations at: https://www.hydrodaten.admin.ch/en/seen-und-fluesse/stations
+
+## Build & Commands
+
+- **Run binary**: `cargo run`
+- **Format code**: `cargo fmt`
+- **Run linter**: `cargo clippy`
+- **Run tests**: `cargo test`
+
+## Usage
+
+1. Ensure you have a `config.toml` file in the project root
+2. Run the application with `cargo run`
+3. The application will fetch the latest water temperature data for all
+   configured stations
+
+## Development
+
+Before committing, always run:
+
+    cargo fmt && cargo test && cargo clippy
+
+## License
+
+This project is licensed under the same terms as the parent Gfrörli project.

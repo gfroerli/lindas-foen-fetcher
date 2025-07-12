@@ -1,0 +1,7 @@
+[stations]
+# List of station IDs to query for water temperature data
+ids = [
+    2104, # Linth, Weesen
+    2176, # Sihl, Zürich
+    2135, # Aare, Bern
+]

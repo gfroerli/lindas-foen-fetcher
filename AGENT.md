@@ -15,6 +15,11 @@ data from the FOEN (BAFU) over a SPARQL endpoint.
 
 - Follow Rust conventions
 - Always apply rustfmt
+- When using imports, use the convention of grouping them by category, separated
+  by an empty line: Std imports, external imports, internal imports. Within each
+  category, sort alphabetically.
+- One `use` statement per crate
+- Sort all dependencies in `Cargo.toml` alphabetically
 
 ## Testing
 
@@ -39,7 +44,7 @@ data from the FOEN (BAFU) over a SPARQL endpoint.
 
 When adding new configuration options, update all relevant places:
 
-1. Environment variables in `.env.example`
+1. Example configuration in `config.example.toml`
 2. Configuration schemas in `src/config.rs`
 3. Documentation in README.md
 

@@ -4,23 +4,28 @@
 //! Federal Office for the Environment) LINDAS SPARQL endpoint and displays them
 //! in the terminal.
 
+mod config;
 mod display;
 mod parsing;
 mod sparql;
 
+use config::Config;
 use display::{
     print_error_summary, print_measurement_row, print_no_data_message, print_summary,
     print_table_header,
 };
 use parsing::StationMeasurement;
-use sparql::{STATION_IDS, get_station_measurements};
+use sparql::get_station_measurements;
 
 /// Fetches all station data and handles errors appropriately
-async fn fetch_all_station_data(client: &reqwest::Client) -> (Vec<StationMeasurement>, usize) {
+async fn fetch_all_station_data(
+    client: &reqwest::Client,
+    station_ids: &[u32],
+) -> (Vec<StationMeasurement>, usize) {
     let mut all_measurements = Vec::new();
     let mut error_count = 0;
 
-    for &station_id in STATION_IDS {
+    for &station_id in station_ids {
         match get_station_measurements(client, station_id).await {
             Ok(measurements) => {
                 if measurements.is_empty() {
@@ -45,17 +50,23 @@ async fn fetch_all_station_data(client: &reqwest::Client) -> (Vec<StationMeasure
 /// Main application entry point
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    // Load configuration
+    let config = Config::load_from_file("config.toml")
+        .map_err(|e| format!("Failed to load config.toml: {e}"))?;
+
+    let station_ids = &config.stations.ids;
+
     println!(
         "Fetching water temperature data for {} stations: {:?}...",
-        STATION_IDS.len(),
-        STATION_IDS
+        station_ids.len(),
+        station_ids
     );
 
     let client = reqwest::Client::new();
 
     print_table_header();
 
-    let (all_measurements, error_count) = fetch_all_station_data(&client).await;
+    let (all_measurements, error_count) = fetch_all_station_data(&client, station_ids).await;
 
     print_summary(all_measurements.len());
     print_error_summary(error_count);

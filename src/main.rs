@@ -6,6 +6,7 @@
 
 mod config;
 mod display;
+mod gfroerli;
 mod parsing;
 mod sparql;
 
@@ -16,6 +17,7 @@ use display::{
     print_error_summary, print_measurement_row, print_no_data_message, print_summary,
     print_table_header,
 };
+use gfroerli::send_all_measurements;
 use parsing::StationMeasurement;
 use sparql::get_station_measurements;
 
@@ -83,6 +85,24 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     print_summary(all_measurements.len());
     print_error_summary(error_count);
+
+    // Send measurements to Gfrörli API
+    if !all_measurements.is_empty() {
+        println!("\nSending measurements to Gfrörli API...");
+        let (success_count, api_error_count) = send_all_measurements(
+            &client,
+            &config.gfroerli_api,
+            &all_measurements,
+            |foen_station_id| config.find_gfroerli_sensor_id(foen_station_id),
+        )
+        .await;
+
+        println!("\nGfrörli API Summary:");
+        println!("Successfully sent: {success_count}");
+        if api_error_count > 0 {
+            println!("Failed to send: {api_error_count}");
+        }
+    }
 
     Ok(())
 }

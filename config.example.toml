@@ -1,5 +1,6 @@
 [gfroerli_api]
-api_key = "gfroerli-exmaple-api-key"
+api_url = "http://localhost:3000/api"
+api_key = "gfroerli-example-api-key"
 
 # Linth, Weesen
 [[stations]]

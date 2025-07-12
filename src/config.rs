@@ -17,6 +17,8 @@ pub struct Config {
 /// Gfrörli configuration
 #[derive(Debug, Deserialize, Serialize)]
 pub struct GfroerliConfig {
+    /// Gfrörli API base URL
+    pub api_url: String,
     /// Gfrörli private API key
     pub api_key: String,
 }
@@ -84,6 +86,7 @@ mod tests {
                 },
             ],
             gfroerli_api: GfroerliConfig {
+                api_url: "http://localhost:3000/api/".to_string(),
                 api_key: "test-api-key".to_string(),
             },
         };
@@ -115,6 +118,7 @@ mod tests {
                 },
             ],
             gfroerli_api: GfroerliConfig {
+                api_url: "http://localhost:3000/api/".to_string(),
                 api_key: "test-api-key".to_string(),
             },
         };

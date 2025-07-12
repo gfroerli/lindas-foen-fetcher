@@ -1,6 +1,6 @@
 [package]
 name = "lindas-foen-fetcher"
-description = "Fetch water temperature measurements from the BAFU/FOEN LINDAS endpoint and forward it to the Gfrörli database."
+description = "Fetch water temperature measurements from the BAFU/FOEN LINDAS endpoint and forward them to the Gfrörli database."
 version = "0.1.0"
 edition = "2024"
 

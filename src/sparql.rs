@@ -6,7 +6,18 @@ use crate::parsing::{SparqlResponse, StationMeasurement, parse_station_measureme
 pub const SPARQL_ENDPOINT: &str = "https://lindas.admin.ch/query";
 
 /// Station IDs to query for water temperature data
-pub const STATION_IDS: &[u32] = &[2104, 2176, 2635, 2070];
+pub const STATION_IDS: &[u32] = &[
+    2104, // Linth, Weesen
+    2176, // Sihl, Zürich
+    2135, // Aare, Bern
+    2030, // Aare, Thun
+    2016, // Aare, Brugg
+    2070, // Emme, Emmenmatt
+    2243, // Limmat, Baden
+    2044, // Thur, Andelfingen
+    2152, // Reuss, Luzern
+    2130, // Rhein, Laufenburg
+];
 
 /// SPARQL query template to fetch station name and latest water temperature
 const SPARQL_QUERY_TEMPLATE: &str = r#"

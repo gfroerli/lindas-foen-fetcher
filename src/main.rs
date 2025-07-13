@@ -5,15 +5,22 @@
 //! to the Gfrörli API.
 
 mod config;
+mod database;
 mod gfroerli;
 mod parsing;
 mod sparql;
 
 use anyhow::{Context, Result, anyhow};
 use clap::Parser;
-use tracing::{debug, error, info};
+use rusqlite::Connection;
+use tracing::{debug, error, info, warn};
 
-use crate::{config::Config, gfroerli::send_measurement, sparql::fetch_station_measurement};
+use crate::{
+    config::Config,
+    database::{init_database, is_measurement_sent, record_measurement_sent},
+    gfroerli::send_measurement,
+    sparql::fetch_station_measurement,
+};
 
 /// Command line arguments
 #[derive(Parser)]
@@ -25,7 +32,12 @@ struct Args {
 }
 
 /// Processes a single station: Fetches data and sends to API
-async fn process_station(client: &reqwest::Client, config: &Config, station_id: u32) -> Result<()> {
+async fn process_station(
+    client: &reqwest::Client,
+    config: &Config,
+    db_conn: &Connection,
+    station_id: u32,
+) -> Result<()> {
     // Query latest measurement from LINDAS
     let measurement = fetch_station_measurement(client, station_id)
         .await
@@ -49,9 +61,22 @@ async fn process_station(client: &reqwest::Client, config: &Config, station_id: 
             )
         })?;
 
+    // Check if this measurement was already sent
+    if is_measurement_sent(db_conn, sensor_id, &measurement.time)? {
+        warn!(
+            "Station {} ({}) measurement at {} already sent, skipping",
+            measurement.station_id,
+            measurement.station_name,
+            measurement.time.format("%Y-%m-%d %H:%M:%S %z")
+        );
+        return Ok(());
+    }
+
     // Send to API
     match send_measurement(client, &config.gfroerli_api, &measurement, sensor_id).await {
         Ok(()) => {
+            // Record that we successfully sent this measurement
+            record_measurement_sent(db_conn, sensor_id, &measurement.time)?;
             info!(
                 "Station {} ({}) sent to API (sensor {})",
                 measurement.station_id, measurement.station_name, sensor_id,
@@ -91,6 +116,10 @@ async fn main() -> Result<()> {
         station_ids
     );
 
+    // Initialize database
+    let db_conn =
+        init_database(config.database_path()).with_context(|| "Failed to initialize database")?;
+
     // Initialize HTTP client
     let client = reqwest::Client::new();
 
@@ -100,7 +129,7 @@ async fn main() -> Result<()> {
     let mut total_errors = 0;
 
     for &station_id in &station_ids {
-        if let Err(e) = process_station(&client, &config, station_id).await {
+        if let Err(e) = process_station(&client, &config, &db_conn, station_id).await {
             error!("Failed to process station {}: {}", station_id, e);
             total_errors += 1;
         } else {

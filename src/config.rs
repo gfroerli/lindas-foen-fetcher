@@ -15,6 +15,8 @@ pub struct Config {
     pub gfroerli_api: GfroerliConfig,
     /// Logging configuration (optional, defaults to "info")
     pub logging: Option<LoggingConfig>,
+    /// Database configuration (optional, defaults to "measurements.db")
+    pub database: Option<DatabaseConfig>,
 }
 
 /// Gfrörli configuration
@@ -31,6 +33,13 @@ pub struct GfroerliConfig {
 pub struct LoggingConfig {
     /// Log level filter (using env_logger syntax)
     pub level: String,
+}
+
+/// Database configuration
+#[derive(Debug, Deserialize, Serialize)]
+pub struct DatabaseConfig {
+    /// Path to SQLite database file
+    pub path: String,
 }
 
 /// Station configuration with FOEN station ID and Gfrörli sensor ID mapping
@@ -67,6 +76,14 @@ impl Config {
             .as_ref()
             .map(|l| l.level.as_str())
             .unwrap_or("info")
+    }
+
+    /// Get the database path, with fallback to "measurements.db" if not configured
+    pub fn database_path(&self) -> &str {
+        self.database
+            .as_ref()
+            .map(|d| d.path.as_str())
+            .unwrap_or("measurements.db")
     }
 
     /// Get all FOEN station IDs
@@ -113,6 +130,9 @@ mod tests {
             logging: Some(LoggingConfig {
                 level: "info".to_string(),
             }),
+            database: Some(DatabaseConfig {
+                path: "test.db".to_string(),
+            }),
         };
         let toml_str = toml::to_string(&config).unwrap();
         let deserialized: Config = toml::from_str(&toml_str).unwrap();
@@ -147,6 +167,9 @@ mod tests {
             },
             logging: Some(LoggingConfig {
                 level: "info".to_string(),
+            }),
+            database: Some(DatabaseConfig {
+                path: "test.db".to_string(),
             }),
         };
 

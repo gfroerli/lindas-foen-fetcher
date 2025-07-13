@@ -10,6 +10,7 @@ mod gfroerli;
 mod parsing;
 mod sparql;
 
+use anyhow::{Context, Result};
 use clap::Parser;
 
 use crate::{
@@ -64,12 +65,12 @@ async fn fetch_all_station_data(
 
 /// Main application entry point
 #[tokio::main]
-async fn main() -> Result<(), Box<dyn std::error::Error>> {
+async fn main() -> Result<()> {
     let args = Args::parse();
 
     // Load configuration
     let config = Config::load_from_file(&args.config)
-        .map_err(|e| format!("Failed to load config at {}: {e}", args.config))?;
+        .with_context(|| format!("Failed to load config from '{}'", args.config))?;
 
     let station_ids = config.foen_station_ids();
 

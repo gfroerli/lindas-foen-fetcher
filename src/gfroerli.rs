@@ -1,6 +1,6 @@
 //! Gfrörli API integration for sending measurement data
 
-use std::error::Error;
+use anyhow::{Context, Result};
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -19,7 +19,7 @@ struct MeasurementRequest {
 /// Helper function to build API endpoint URL
 fn build_api_url(base_url: &str, endpoint: &str) -> String {
     let base = base_url.trim_end_matches('/');
-    format!("{}/{}", base, endpoint)
+    format!("{base}/{endpoint}")
 }
 
 /// Sends a measurement to the Gfrörli API
@@ -28,7 +28,7 @@ pub async fn send_measurement(
     config: &GfroerliConfig,
     measurement: &StationMeasurement,
     sensor_id: u32,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     let url = build_api_url(&config.api_url, "measurements");
 
     let payload = MeasurementRequest {
@@ -44,7 +44,7 @@ pub async fn send_measurement(
         .json(&payload)
         .send()
         .await
-        .map_err(|e| format!("Network error when sending to Gfrörli API: {e}"))?;
+        .with_context(|| format!("Failed to send measurement to Gfrörli API at {url}"))?;
 
     if !response.status().is_success() {
         let status = response.status();
@@ -52,7 +52,9 @@ pub async fn send_measurement(
             .text()
             .await
             .unwrap_or_else(|_| "Unable to read error response".to_string());
-        return Err(format!("Gfrörli API request failed: HTTP {status} - {error_text}").into());
+        return Err(anyhow::anyhow!(
+            "Gfrörli API request failed: HTTP {status} - {error_text}"
+        ));
     }
 
     Ok(())

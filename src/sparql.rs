@@ -1,5 +1,7 @@
 //! SPARQL query building and data fetching
 
+use anyhow::{Context, Result};
+
 use crate::parsing::{SparqlResponse, StationMeasurement, parse_station_measurements};
 
 /// SPARQL endpoint URL for the LINDAS platform
@@ -32,7 +34,7 @@ pub fn build_sparql_query(station_id: u32) -> String {
 pub async fn fetch_sparql_data(
     client: &reqwest::Client,
     station_id: u32,
-) -> Result<SparqlResponse, Box<dyn std::error::Error>> {
+) -> Result<SparqlResponse> {
     let query = build_sparql_query(station_id);
     let params = [("query", query.as_str())];
 
@@ -42,7 +44,7 @@ pub async fn fetch_sparql_data(
         .form(&params)
         .send()
         .await
-        .map_err(|e| format!("Network error for station {station_id}: {e}"))?;
+        .with_context(|| format!("Failed to send SPARQL request for station {station_id}"))?;
 
     if !response.status().is_success() {
         let status = response.status();
@@ -50,16 +52,14 @@ pub async fn fetch_sparql_data(
             .text()
             .await
             .unwrap_or_else(|_| "Unable to read error response".to_string());
-        return Err(format!(
+        return Err(anyhow::anyhow!(
             "SPARQL query failed for station {station_id}: HTTP {status} - {error_text}"
-        )
-        .into());
+        ));
     }
 
-    let sparql_response: SparqlResponse = response
-        .json()
-        .await
-        .map_err(|e| format!("JSON parsing error for station {station_id}: {e}"))?;
+    let sparql_response: SparqlResponse = response.json().await.with_context(|| {
+        format!("Failed to parse SPARQL JSON response for station {station_id}")
+    })?;
 
     Ok(sparql_response)
 }
@@ -68,7 +68,9 @@ pub async fn fetch_sparql_data(
 pub async fn get_station_measurements(
     client: &reqwest::Client,
     station_id: u32,
-) -> Result<Vec<StationMeasurement>, Box<dyn std::error::Error>> {
-    let sparql_response = fetch_sparql_data(client, station_id).await?;
+) -> Result<Vec<StationMeasurement>> {
+    let sparql_response = fetch_sparql_data(client, station_id)
+        .await
+        .with_context(|| format!("Failed to fetch SPARQL data for station {station_id}"))?;
     Ok(parse_station_measurements(station_id, sparql_response))
 }

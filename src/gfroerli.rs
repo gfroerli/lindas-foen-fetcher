@@ -1,7 +1,7 @@
 //! Gfrörli API integration for sending measurement data
 
 use anyhow::{Context, Result};
-use tracing::{debug, error};
+use tracing::debug;
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -64,49 +64,6 @@ pub async fn send_measurement(
     }
 
     Ok(())
-}
-
-/// Sends all measurements to the Gfrörli API
-pub async fn send_all_measurements(
-    client: &reqwest::Client,
-    config: &GfroerliConfig,
-    measurements: &[StationMeasurement],
-    find_sensor_id: impl Fn(u32) -> Option<u32>,
-) -> (usize, usize) {
-    let mut success_count = 0;
-    let mut error_count = 0;
-
-    for measurement in measurements {
-        match find_sensor_id(measurement.station_id) {
-            Some(sensor_id) => {
-                match send_measurement(client, config, measurement, sensor_id).await {
-                    Ok(()) => {
-                        debug!(
-                            "Sent measurement for station {} (sensor {}) to Gfrörli",
-                            measurement.station_id, sensor_id
-                        );
-                        success_count += 1;
-                    }
-                    Err(e) => {
-                        error!(
-                            "Failed to send measurement for station {} (sensor {}): {}",
-                            measurement.station_id, sensor_id, e
-                        );
-                        error_count += 1;
-                    }
-                }
-            }
-            None => {
-                error!(
-                    "No sensor mapping found for station {}",
-                    measurement.station_id
-                );
-                error_count += 1;
-            }
-        }
-    }
-
-    (success_count, error_count)
 }
 
 #[cfg(test)]

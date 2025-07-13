@@ -1,22 +1,19 @@
 //! LINDAS Hydrodata Fetcher
 //!
 //! This application fetches water temperature measurements from the FOEN (Swiss
-//! Federal Office for the Environment) LINDAS SPARQL endpoint and displays them
-//! in the terminal.
+//! Federal Office for the Environment) LINDAS SPARQL endpoint and sends them
+//! to the Gfrörli API.
 
 mod config;
 mod gfroerli;
 mod parsing;
 mod sparql;
 
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use tracing::{debug, error, info};
 
-use crate::{
-    config::Config, gfroerli::send_all_measurements, parsing::StationMeasurement,
-    sparql::get_station_measurements,
-};
+use crate::{config::Config, gfroerli::send_measurement, sparql::fetch_station_measurement};
 
 /// Command line arguments
 #[derive(Parser)]
@@ -27,40 +24,47 @@ struct Args {
     config: String,
 }
 
-/// Fetches all station data and handles errors appropriately
-async fn fetch_all_station_data(
-    client: &reqwest::Client,
-    station_ids: &[u32],
-) -> (Vec<StationMeasurement>, usize) {
-    let mut all_measurements = Vec::new();
-    let mut error_count = 0;
+/// Processes a single station: Fetches data and sends to API
+async fn process_station(client: &reqwest::Client, config: &Config, station_id: u32) -> Result<()> {
+    // Query latest measurement from LINDAS
+    let measurement = fetch_station_measurement(client, station_id)
+        .await
+        .with_context(|| format!("Error fetching data for station {station_id}"))?
+        .ok_or_else(|| anyhow!("No temperature data found for station {}", station_id))?;
+    info!(
+        "Station {}: {} - {} - {:.3}°C",
+        measurement.station_id,
+        measurement.station_name,
+        measurement.time.format("%Y-%m-%d %H:%M:%S %z"),
+        measurement.temperature
+    );
 
-    for &station_id in station_ids {
-        match get_station_measurements(client, station_id).await {
-            Ok(measurements) => {
-                if measurements.is_empty() {
-                    info!("No temperature data found for station {}", station_id);
-                } else {
-                    for measurement in &measurements {
-                        info!(
-                            "Station {} ({}): {:.3}°C ({})",
-                            measurement.station_id,
-                            measurement.station_name,
-                            measurement.temperature,
-                            measurement.time.format("%Y-%m-%d %H:%M:%S %z"),
-                        );
-                    }
-                    all_measurements.extend(measurements);
-                }
-            }
-            Err(e) => {
-                error!("Error fetching data for station {}: {}", station_id, e);
-                error_count += 1;
-            }
+    // Get Gfrörli sensor ID from config
+    let sensor_id = config
+        .find_gfroerli_sensor_id(measurement.station_id)
+        .ok_or_else(|| {
+            anyhow!(
+                "No sensor mapping found for station {}",
+                measurement.station_id
+            )
+        })?;
+
+    // Send to API
+    match send_measurement(client, &config.gfroerli_api, &measurement, sensor_id).await {
+        Ok(()) => {
+            debug!(
+                "Sent measurement for station {} (sensor {}) to Gfrörli",
+                measurement.station_id, sensor_id
+            );
+            Ok(())
         }
+        Err(e) => Err(anyhow!(
+            "Failed to send measurement for station {} (sensor {}): {}",
+            measurement.station_id,
+            sensor_id,
+            e
+        )),
     }
-
-    (all_measurements, error_count)
 }
 
 /// Main application entry point
@@ -90,34 +94,26 @@ async fn main() -> Result<()> {
     // Initialize HTTP client
     let client = reqwest::Client::new();
 
-    debug!("Starting data fetch for all stations");
+    debug!("Starting station processing");
 
-    let (all_measurements, error_count) = fetch_all_station_data(&client, &station_ids).await;
+    let mut total_success = 0;
+    let mut total_errors = 0;
 
-    info!("Total records found: {}", all_measurements.len());
-    if error_count > 0 {
-        error!("{} station(s) had errors during data fetching", error_count);
-    }
-
-    // Send measurements to Gfrörli API
-    if !all_measurements.is_empty() {
-        info!("Sending measurements to Gfrörli API");
-        let (success_count, api_error_count) = send_all_measurements(
-            &client,
-            &config.gfroerli_api,
-            &all_measurements,
-            |foen_station_id| config.find_gfroerli_sensor_id(foen_station_id),
-        )
-        .await;
-
-        info!("Gfrörli API Summary - Successfully sent: {}", success_count);
-        if api_error_count > 0 {
-            error!(
-                "Failed to send {} measurements to Gfrörli API",
-                api_error_count
-            );
+    for &station_id in &station_ids {
+        if let Err(e) = process_station(&client, &config, station_id).await {
+            error!("Failed to process station {}: {}", station_id, e);
+            total_errors += 1;
+        } else {
+            total_success += 1;
         }
     }
 
+    info!(
+        "Successfully sent {} measurements to Gfrörli API",
+        total_success
+    );
+    if total_errors > 0 {
+        error!("Total errors encountered: {}", total_errors);
+    }
     Ok(())
 }

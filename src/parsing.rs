@@ -78,21 +78,3 @@ pub struct StationMeasurement {
     pub time: DateTime<Utc>,
     pub temperature: f32,
 }
-
-/// Converts SPARQL response to structured measurement data
-pub fn parse_station_measurements(
-    station_id: u32,
-    sparql_response: SparqlResponse,
-) -> Vec<StationMeasurement> {
-    sparql_response
-        .results
-        .bindings
-        .into_iter()
-        .map(|binding| StationMeasurement {
-            station_id,
-            station_name: binding.name,
-            time: binding.time,
-            temperature: binding.temperature,
-        })
-        .collect()
-}

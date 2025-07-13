@@ -3,7 +3,7 @@
 use anyhow::{Context, Result};
 use tracing::debug;
 
-use crate::parsing::{SparqlResponse, StationMeasurement, parse_station_measurements};
+use crate::parsing::{SparqlResponse, StationMeasurement};
 
 /// SPARQL endpoint URL for the LINDAS platform
 pub const SPARQL_ENDPOINT: &str = "https://lindas.admin.ch/query";
@@ -26,21 +26,17 @@ ORDER BY DESC(?time)
 LIMIT 1
 "#;
 
-/// Generates a SPARQL query for a specific station ID
-pub fn build_sparql_query(station_id: u32) -> String {
-    SPARQL_QUERY_TEMPLATE.replace("{STATION_ID}", &station_id.to_string())
-}
-
-/// Fetches raw SPARQL response for a specific station
-pub async fn fetch_sparql_data(
+/// Fetches and parses station measurement data
+pub async fn fetch_station_measurement(
     client: &reqwest::Client,
     station_id: u32,
-) -> Result<SparqlResponse> {
-    let query = build_sparql_query(station_id);
+) -> Result<Option<StationMeasurement>> {
+    // Create query
+    let query = SPARQL_QUERY_TEMPLATE.replace("{STATION_ID}", &station_id.to_string());
     let params = [("query", query.as_str())];
 
+    // Send request
     debug!("Sending SPARQL request for station {}", station_id);
-
     let response = client
         .post(SPARQL_ENDPOINT)
         .header("Accept", "application/sparql-results+json")
@@ -49,6 +45,7 @@ pub async fn fetch_sparql_data(
         .await
         .with_context(|| format!("Failed to send SPARQL request for station {station_id}"))?;
 
+    // Handle errors
     if !response.status().is_success() {
         let status = response.status();
         let error_text = response
@@ -60,26 +57,31 @@ pub async fn fetch_sparql_data(
         ));
     }
 
+    // Parse response
     let sparql_response: SparqlResponse = response.json().await.with_context(|| {
         format!("Failed to parse SPARQL JSON response for station {station_id}")
     })?;
-
     debug!(
         "Successfully received SPARQL response for station {} with {} bindings",
         station_id,
         sparql_response.results.bindings.len()
     );
+    if sparql_response.results.bindings.len() > 1 {
+        return Err(anyhow::anyhow!(
+            "Expected 1 result for SPARQL query for station {station_id}, but got {}",
+            sparql_response.results.bindings.len(),
+        ));
+    }
 
-    Ok(sparql_response)
-}
-
-/// Fetches and parses station measurement data
-pub async fn get_station_measurements(
-    client: &reqwest::Client,
-    station_id: u32,
-) -> Result<Vec<StationMeasurement>> {
-    let sparql_response = fetch_sparql_data(client, station_id)
-        .await
-        .with_context(|| format!("Failed to fetch SPARQL data for station {station_id}"))?;
-    Ok(parse_station_measurements(station_id, sparql_response))
+    Ok(sparql_response
+        .results
+        .bindings
+        .into_iter()
+        .next()
+        .map(|binding| StationMeasurement {
+            station_id,
+            station_name: binding.name,
+            time: binding.time,
+            temperature: binding.temperature,
+        }))
 }

@@ -20,6 +20,7 @@ data from the FOEN (BAFU) over a SPARQL endpoint.
   category, sort alphabetically.
 - Use merged imports: One `use` statement per crate
 - Sort all dependencies in `Cargo.toml` alphabetically
+- Avoid deeply nested logic by using early returns for error cases
 
 ## Testing
 

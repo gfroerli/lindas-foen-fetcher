@@ -1,4 +1,4 @@
-//! LINDAS FOEN Fetcher
+//! LINDAS Hydrodata Fetcher
 //!
 //! This application fetches water temperature measurements from the FOEN (Swiss
 //! Federal Office for the Environment) LINDAS SPARQL endpoint and displays them

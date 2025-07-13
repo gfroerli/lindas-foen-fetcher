@@ -1,4 +1,4 @@
-# LINDAS FOEN Fetcher
+# LINDAS Hydrodata Fetcher
 
 This Rust application fetches open data from the [LINDAS
 service](https://lindas.admin.ch/). Specifically, it fetches water temperature

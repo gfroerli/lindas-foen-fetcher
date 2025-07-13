@@ -5,22 +5,16 @@
 //! in the terminal.
 
 mod config;
-mod display;
 mod gfroerli;
 mod parsing;
 mod sparql;
 
 use anyhow::{Context, Result};
 use clap::Parser;
+use tracing::{debug, error, info};
 
 use crate::{
-    config::Config,
-    display::{
-        print_error_summary, print_measurement_row, print_no_data_message, print_summary,
-        print_table_header,
-    },
-    gfroerli::send_all_measurements,
-    parsing::StationMeasurement,
+    config::Config, gfroerli::send_all_measurements, parsing::StationMeasurement,
     sparql::get_station_measurements,
 };
 
@@ -45,16 +39,22 @@ async fn fetch_all_station_data(
         match get_station_measurements(client, station_id).await {
             Ok(measurements) => {
                 if measurements.is_empty() {
-                    print_no_data_message(station_id);
+                    info!("No temperature data found for station {}", station_id);
                 } else {
                     for measurement in &measurements {
-                        print_measurement_row(measurement);
+                        info!(
+                            "Station {} ({}): {:.3}°C ({})",
+                            measurement.station_id,
+                            measurement.station_name,
+                            measurement.temperature,
+                            measurement.time.format("%Y-%m-%d %H:%M:%S %z"),
+                        );
                     }
                     all_measurements.extend(measurements);
                 }
             }
             Err(e) => {
-                eprintln!("Error fetching data for station {station_id}: {e}");
+                error!("Error fetching data for station {}: {}", station_id, e);
                 error_count += 1;
             }
         }
@@ -72,26 +72,36 @@ async fn main() -> Result<()> {
     let config = Config::load_from_file(&args.config)
         .with_context(|| format!("Failed to load config from '{}'", args.config))?;
 
+    // Initialize tracing with config-based logging level
+    let logging_level = config.logging_level();
+    let env_filter = tracing_subscriber::EnvFilter::try_new(logging_level)
+        .with_context(|| format!("Invalid logging level: '{logging_level}'"))?;
+
+    tracing_subscriber::fmt().with_env_filter(env_filter).init();
+
     let station_ids = config.foen_station_ids();
 
-    println!(
-        "Fetching water temperature data for {} stations: {:?}...",
+    info!(
+        "Fetching water temperature data for {} stations: {:?}",
         station_ids.len(),
         station_ids
     );
 
+    // Initialize HTTP client
     let client = reqwest::Client::new();
 
-    print_table_header();
+    debug!("Starting data fetch for all stations");
 
     let (all_measurements, error_count) = fetch_all_station_data(&client, &station_ids).await;
 
-    print_summary(all_measurements.len());
-    print_error_summary(error_count);
+    info!("Total records found: {}", all_measurements.len());
+    if error_count > 0 {
+        error!("{} station(s) had errors during data fetching", error_count);
+    }
 
     // Send measurements to Gfrörli API
     if !all_measurements.is_empty() {
-        println!("\nSending measurements to Gfrörli API...");
+        info!("Sending measurements to Gfrörli API");
         let (success_count, api_error_count) = send_all_measurements(
             &client,
             &config.gfroerli_api,
@@ -100,10 +110,12 @@ async fn main() -> Result<()> {
         )
         .await;
 
-        println!("\nGfrörli API Summary:");
-        println!("Successfully sent: {success_count}");
+        info!("Gfrörli API Summary - Successfully sent: {}", success_count);
         if api_error_count > 0 {
-            println!("Failed to send: {api_error_count}");
+            error!(
+                "Failed to send {} measurements to Gfrörli API",
+                api_error_count
+            );
         }
     }
 

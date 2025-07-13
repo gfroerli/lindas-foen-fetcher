@@ -16,6 +16,40 @@ The station IDs correspond to Swiss hydrological monitoring stations. You can
 find all available stations at:
 <https://www.hydrodaten.admin.ch/en/seen-und-fluesse/stations#temperature>
 
+## Logging
+
+The application uses structured logging with configurable levels. Logging is configured through the `[logging]` section in your config file.
+
+### Log Levels
+
+The `level` field accepts standard env_logger syntax:
+- `error` - Only error messages
+- `warn` - Warning and error messages  
+- `info` - Informational, warning, and error messages
+- `debug` - Debug, informational, warning, and error messages
+- `trace` - All log messages
+
+You can also specify per-module log levels:
+```
+level = "info,lindas_hydrodata_fetcher=debug"
+```
+
+This sets the default level to `info` but enables `debug` logging for the application modules.
+
+### Examples
+
+```toml
+[logging]
+# Production: only show important information
+level = "info"
+
+# Development: show detailed application logs
+level = "info,lindas_hydrodata_fetcher=debug"
+
+# Troubleshooting: show all logs including dependencies
+level = "debug"
+```
+
 ## Build & Commands
 
 - **Run binary**: `cargo run`

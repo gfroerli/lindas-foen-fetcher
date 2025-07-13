@@ -4,6 +4,7 @@ use std::{fs, path::Path};
 
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
+use tracing::debug;
 
 /// Main configuration structure
 #[derive(Debug, Deserialize, Serialize)]
@@ -12,6 +13,8 @@ pub struct Config {
     pub stations: Vec<StationConfig>,
     /// Gfrörli API configuration
     pub gfroerli_api: GfroerliConfig,
+    /// Logging configuration (optional, defaults to "info")
+    pub logging: Option<LoggingConfig>,
 }
 
 /// Gfrörli configuration
@@ -21,6 +24,13 @@ pub struct GfroerliConfig {
     pub api_url: String,
     /// Gfrörli private API key
     pub api_key: String,
+}
+
+/// Logging configuration
+#[derive(Debug, Deserialize, Serialize)]
+pub struct LoggingConfig {
+    /// Log level filter (using env_logger syntax)
+    pub level: String,
 }
 
 /// Station configuration with FOEN station ID and Gfrörli sensor ID mapping
@@ -36,12 +46,27 @@ impl Config {
     /// Load configuration from a TOML file
     pub fn load_from_file<P: AsRef<Path>>(path: P) -> Result<Self> {
         let path_ref = path.as_ref();
+        debug!("Loading configuration from '{}'", path_ref.display());
+
         let content = fs::read_to_string(path_ref)
             .with_context(|| format!("Failed to read config file '{}'", path_ref.display()))?;
         let config: Config = toml::from_str(&content).with_context(|| {
             format!("Failed to parse TOML config file '{}'", path_ref.display())
         })?;
+
+        debug!(
+            "Successfully loaded configuration with {} stations",
+            config.stations.len()
+        );
         Ok(config)
+    }
+
+    /// Get the logging level, with fallback to "info" if not configured
+    pub fn logging_level(&self) -> &str {
+        self.logging
+            .as_ref()
+            .map(|l| l.level.as_str())
+            .unwrap_or("info")
     }
 
     /// Get all FOEN station IDs
@@ -93,6 +118,9 @@ mod tests {
                 api_url: "http://localhost:3000/api/".to_string(),
                 api_key: "test-api-key".to_string(),
             },
+            logging: Some(LoggingConfig {
+                level: "info".to_string(),
+            }),
         };
         let toml_str = toml::to_string(&config).unwrap();
         let deserialized: Config = toml::from_str(&toml_str).unwrap();
@@ -125,6 +153,9 @@ mod tests {
                 api_url: "http://localhost:3000/api/".to_string(),
                 api_key: "test-api-key".to_string(),
             },
+            logging: Some(LoggingConfig {
+                level: "info".to_string(),
+            }),
         };
 
         // Clean up any existing test file

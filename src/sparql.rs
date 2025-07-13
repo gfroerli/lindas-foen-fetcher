@@ -1,6 +1,7 @@
 //! SPARQL query building and data fetching
 
 use anyhow::{Context, Result};
+use tracing::debug;
 
 use crate::parsing::{SparqlResponse, StationMeasurement, parse_station_measurements};
 
@@ -38,6 +39,8 @@ pub async fn fetch_sparql_data(
     let query = build_sparql_query(station_id);
     let params = [("query", query.as_str())];
 
+    debug!("Sending SPARQL request for station {}", station_id);
+
     let response = client
         .post(SPARQL_ENDPOINT)
         .header("Accept", "application/sparql-results+json")
@@ -60,6 +63,12 @@ pub async fn fetch_sparql_data(
     let sparql_response: SparqlResponse = response.json().await.with_context(|| {
         format!("Failed to parse SPARQL JSON response for station {station_id}")
     })?;
+
+    debug!(
+        "Successfully received SPARQL response for station {} with {} bindings",
+        station_id,
+        sparql_response.results.bindings.len()
+    );
 
     Ok(sparql_response)
 }

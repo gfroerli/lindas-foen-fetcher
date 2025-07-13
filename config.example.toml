@@ -2,6 +2,9 @@
 api_url = "http://localhost:3000/api"
 api_key = "gfroerli-example-api-key"
 
+[logging]
+level = "info,lindas_hydrodata_fetcher=debug"
+
 # Linth, Weesen
 [[stations]]
 foen_station_id = 2104

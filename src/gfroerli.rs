@@ -1,6 +1,7 @@
 //! Gfrörli API integration for sending measurement data
 
 use anyhow::{Context, Result};
+use tracing::{debug, error};
 
 use chrono::{DateTime, Utc};
 use serde::Serialize;
@@ -36,6 +37,11 @@ pub async fn send_measurement(
         temperature: measurement.temperature,
         created_at: measurement.time,
     };
+
+    debug!(
+        "Sending measurement to Gfrörli API for station {} (sensor {}): {}°C at {}",
+        measurement.station_id, sensor_id, measurement.temperature, measurement.time
+    );
 
     let response = client
         .post(&url)
@@ -75,24 +81,24 @@ pub async fn send_all_measurements(
             Some(sensor_id) => {
                 match send_measurement(client, config, measurement, sensor_id).await {
                     Ok(()) => {
-                        println!(
-                            "✓ Sent measurement for station {} (sensor {}) to Gfrörli",
+                        debug!(
+                            "Sent measurement for station {} (sensor {}) to Gfrörli",
                             measurement.station_id, sensor_id
                         );
                         success_count += 1;
                     }
                     Err(e) => {
-                        eprintln!(
-                            "✗ Failed to send measurement for station {} (sensor {}): {e}",
-                            measurement.station_id, sensor_id
+                        error!(
+                            "Failed to send measurement for station {} (sensor {}): {}",
+                            measurement.station_id, sensor_id, e
                         );
                         error_count += 1;
                     }
                 }
             }
             None => {
-                eprintln!(
-                    "✗ No sensor mapping found for station {}",
+                error!(
+                    "No sensor mapping found for station {}",
                     measurement.station_id
                 );
                 error_count += 1;

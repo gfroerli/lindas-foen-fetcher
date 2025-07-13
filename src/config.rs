@@ -77,14 +77,6 @@ impl Config {
             .collect()
     }
 
-    /// Get all Gfrörli sensor IDs
-    pub fn gfroerli_sensor_ids(&self) -> Vec<u32> {
-        self.stations
-            .iter()
-            .map(|station| station.gfroerli_sensor_id)
-            .collect()
-    }
-
     /// Find Gfrörli sensor ID for a given FOEN station ID
     pub fn find_gfroerli_sensor_id(&self, foen_station_id: u32) -> Option<u32> {
         self.stations

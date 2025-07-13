@@ -24,7 +24,7 @@ The application uses structured logging with configurable levels. Logging is con
 
 The `level` field accepts standard env_logger syntax:
 - `error` - Only error messages
-- `warn` - Warning and error messages  
+- `warn` - Warning and error messages
 - `info` - Informational, warning, and error messages
 - `debug` - Debug, informational, warning, and error messages
 - `trace` - All log messages
@@ -69,6 +69,18 @@ level = "debug"
 Before committing, always run:
 
     cargo fmt && cargo test && cargo clippy
+
+## Docker
+
+There is a Docker image published [on Docker Hub](https://hub.docker.com/r/gfroerli/lindas-hydrodata-fetcher).
+
+The container uses the UID 2344 for the user running the service.
+
+When running the container, you have to mount the configuration file:
+
+    docker run -v $(pwd)/config.toml:/app/config.toml gfroerli/lindas-hydrodata-fetcher
+
+Additionally, you should mount a directory for the database (as configured in the config file).
 
 ## License
 

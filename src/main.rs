@@ -29,6 +29,9 @@ struct Args {
     /// Path to configuration file
     #[arg(short, long, default_value = "config.toml")]
     config: String,
+    /// Dry run mode - fetch data but don't send to API or record in database
+    #[arg(long)]
+    dry_run: bool,
 }
 
 /// Processes a single station: Fetches data and sends to API
@@ -37,6 +40,7 @@ async fn process_station(
     config: &Config,
     db_conn: &Connection,
     station_id: u32,
+    dry_run: bool,
 ) -> Result<()> {
     // Query latest measurement from LINDAS
     let measurement = fetch_station_measurement(client, station_id)
@@ -68,6 +72,14 @@ async fn process_station(
             measurement.station_id,
             measurement.station_name,
             measurement.time.format("%Y-%m-%d %H:%M:%S %z")
+        );
+        return Ok(());
+    }
+
+    if dry_run {
+        info!(
+            "Station {} ({}) would be sent to API (sensor {}) [DRY RUN]",
+            measurement.station_id, measurement.station_name, sensor_id,
         );
         return Ok(());
     }
@@ -123,13 +135,17 @@ async fn main() -> Result<()> {
     // Initialize HTTP client
     let client = reqwest::Client::new();
 
+    if args.dry_run {
+        info!("Running in DRY RUN mode - no data will be sent to API or recorded in database");
+    }
     debug!("Starting station processing");
 
     let mut total_success = 0;
     let mut total_errors = 0;
 
     for &station_id in &station_ids {
-        if let Err(e) = process_station(&client, &config, &db_conn, station_id).await {
+        if let Err(e) = process_station(&client, &config, &db_conn, station_id, args.dry_run).await
+        {
             error!("Failed to process station {}: {}", station_id, e);
             total_errors += 1;
         } else {

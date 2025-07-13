@@ -32,11 +32,11 @@ async fn process_station(client: &reqwest::Client, config: &Config, station_id: 
         .with_context(|| format!("Error fetching data for station {station_id}"))?
         .ok_or_else(|| anyhow!("No temperature data found for station {}", station_id))?;
     info!(
-        "Station {}: {} - {} - {:.3}°C",
+        "Station {} ({}) fetched: {:.3}°C (at {})",
         measurement.station_id,
         measurement.station_name,
+        measurement.temperature,
         measurement.time.format("%Y-%m-%d %H:%M:%S %z"),
-        measurement.temperature
     );
 
     // Get Gfrörli sensor ID from config
@@ -52,9 +52,9 @@ async fn process_station(client: &reqwest::Client, config: &Config, station_id: 
     // Send to API
     match send_measurement(client, &config.gfroerli_api, &measurement, sensor_id).await {
         Ok(()) => {
-            debug!(
-                "Sent measurement for station {} (sensor {}) to Gfrörli",
-                measurement.station_id, sensor_id
+            info!(
+                "Station {} ({}) sent to API (sensor {})",
+                measurement.station_id, measurement.station_name, sensor_id,
             );
             Ok(())
         }

@@ -1,0 +1,39 @@
+on:
+  push:
+  schedule:
+    - cron: '30 6 * * 6'
+
+name: Docker Images
+
+jobs:
+  build:
+    name: Build Docker image
+    runs-on: ubuntu-latest
+    if: github.ref != 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Docker image
+        run: docker build --no-cache .
+
+  publish:
+    name: Publish Docker image
+    runs-on: ubuntu-latest
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - uses: actions/checkout@v4
+      - name: Extract branch name
+        shell: bash
+        run: echo "##[set-output name=branch;]$(echo ${GITHUB_REF#refs/heads/})"
+        id: extract_branch
+      - name: Build Docker image
+        run: |
+          docker build \
+            --no-cache \
+            -t gfroerli/lindas-hydrodata-fetcher:v1 \
+            -t gfroerli/lindas-hydrodata-fetcher:${{ steps.extract_branch.outputs.branch }} \
+            .
+      - name: Push Docker image
+        run: |
+          docker login -u "${{ secrets.DOCKER_USERNAME }}" -p "${{ secrets.DOCKER_PASSWORD }}" && \
+          docker push gfroerli/lindas-hydrodata-fetcher:v1 && \
+          docker push gfroerli/lindas-hydrodata-fetcher:${{ steps.extract_branch.outputs.branch }}

@@ -1,0 +1,56 @@
+on: [push]
+
+name: CI
+
+env:
+  RUST_VERSION: "1.88.0"
+
+jobs:
+  test:
+    name: run tests
+    strategy:
+      matrix:
+        rust: [$RUST_VERSION, stable]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+      - name: Build
+        run: cargo build
+      - name: Run tests
+        run: cargo test
+
+  fmt:
+    name: run rustfmt
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: $RUST_VERSION
+          components: rustfmt
+      - name: Check formatting in all files
+        run: cargo fmt --all -- --check
+
+  clippy:
+    name: run clippy lints
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@v1
+        with:
+          toolchain: stable
+          components: clippy
+      - name: Check if there are clippy warnings
+        run: cargo clippy --all-features -- -D warnings
+
+  audit:
+    name: run cargo audit
+    runs-on: ubuntu-latest
+    container: dbrgn/cargo-audit:latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Audit all used dependencies
+        run: cargo audit

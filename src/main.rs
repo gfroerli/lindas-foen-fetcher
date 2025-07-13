@@ -12,14 +12,16 @@ mod sparql;
 
 use clap::Parser;
 
-use config::Config;
-use display::{
-    print_error_summary, print_measurement_row, print_no_data_message, print_summary,
-    print_table_header,
+use crate::{
+    config::Config,
+    display::{
+        print_error_summary, print_measurement_row, print_no_data_message, print_summary,
+        print_table_header,
+    },
+    gfroerli::send_all_measurements,
+    parsing::StationMeasurement,
+    sparql::get_station_measurements,
 };
-use gfroerli::send_all_measurements;
-use parsing::StationMeasurement;
-use sparql::get_station_measurements;
 
 /// Command line arguments
 #[derive(Parser)]

@@ -1,8 +1,9 @@
 # LINDAS Hydrodata Fetcher
 
 This Rust application fetches open data from the [LINDAS
-service](https://lindas.admin.ch/). Specifically, it fetches water temperature
-data from the FOEN (BAFU) over a SPARQL endpoint.
+service](https://lindas.admin.ch/) and relays it to the [Gfrörli
+API](https://github.com/gfroerli/api). Specifically, it fetches water
+temperature data from the FOEN (BAFU) over a SPARQL endpoint.
 
 ## Configuration
 

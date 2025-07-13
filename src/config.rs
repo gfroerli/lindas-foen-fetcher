@@ -1,7 +1,6 @@
 //! Configuration management for the LINDAS FOEN fetcher
 
-use std::fs;
-use std::path::Path;
+use std::{fs, path::Path};
 
 use serde::{Deserialize, Serialize};
 

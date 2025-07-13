@@ -18,7 +18,7 @@ data from the FOEN (BAFU) over a SPARQL endpoint.
 - When using imports, use the convention of grouping them by category, separated
   by an empty line: Std imports, external imports, internal imports. Within each
   category, sort alphabetically.
-- One `use` statement per crate
+- Use merged imports: One `use` statement per crate
 - Sort all dependencies in `Cargo.toml` alphabetically
 
 ## Testing

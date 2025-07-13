@@ -10,6 +10,11 @@ api_key = "gfroerli-example-api-key"
 # [database]
 # path = "measurements.db"
 
+# Optional: Run configuration (defaults to oneshot mode if not specified)
+# [run]
+# mode = "oneshot"  # or "loop"
+# interval_minutes = 5  # only used in loop mode
+
 # Linth, Weesen
 [[stations]]
 foen_station_id = 2104

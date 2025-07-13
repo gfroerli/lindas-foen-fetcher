@@ -13,10 +13,11 @@ mod sparql;
 use anyhow::{Context, Result, anyhow};
 use clap::Parser;
 use rusqlite::Connection;
+use tokio::time::{Duration, sleep};
 use tracing::{debug, error, info, warn};
 
 use crate::{
-    config::Config,
+    config::{Config, RunMode},
     database::{init_database, is_measurement_sent, record_measurement_sent},
     gfroerli::send_measurement,
     sparql::fetch_station_measurement,
@@ -138,27 +139,64 @@ async fn main() -> Result<()> {
     if args.dry_run {
         info!("Running in DRY RUN mode - no data will be sent to API or recorded in database");
     }
-    debug!("Starting station processing");
 
-    let mut total_success = 0;
-    let mut total_errors = 0;
+    let interval_minutes = config.run_interval_minutes();
+    let mode = config.run_mode();
 
-    for &station_id in &station_ids {
-        if let Err(e) = process_station(&client, &config, &db_conn, station_id, args.dry_run).await
-        {
-            error!("Failed to process station {}: {}", station_id, e);
-            total_errors += 1;
-        } else {
-            total_success += 1;
+    match mode {
+        RunMode::Oneshot => debug!("Running in oneshot mode"),
+        RunMode::Loop => info!(
+            "Running in loop mode with {} minute intervals",
+            interval_minutes
+        ),
+    }
+
+    loop {
+        debug!("Starting station processing cycle");
+
+        let mut total_success = 0;
+        let mut total_errors = 0;
+
+        for &station_id in &station_ids {
+            if let Err(e) =
+                process_station(&client, &config, &db_conn, station_id, args.dry_run).await
+            {
+                error!("Failed to process station {}: {}", station_id, e);
+                total_errors += 1;
+            } else {
+                total_success += 1;
+            }
+        }
+
+        match mode {
+            RunMode::Oneshot => {
+                info!(
+                    "Successfully sent {} measurements to Gfrörli API",
+                    total_success
+                );
+                if total_errors > 0 {
+                    error!("Total errors encountered: {}", total_errors);
+                }
+                break;
+            }
+            RunMode::Loop => {
+                info!(
+                    "Cycle complete - Successfully sent {} measurements to Gfrörli API",
+                    total_success
+                );
+                if total_errors > 0 {
+                    error!(
+                        "Cycle complete - Total errors encountered: {}",
+                        total_errors
+                    );
+                }
+
+                let sleep_duration = Duration::from_secs(interval_minutes as u64 * 60);
+                info!("Sleeping for {} minutes until next cycle", interval_minutes);
+                sleep(sleep_duration).await;
+            }
         }
     }
 
-    info!(
-        "Successfully sent {} measurements to Gfrörli API",
-        total_success
-    );
-    if total_errors > 0 {
-        error!("Total errors encountered: {}", total_errors);
-    }
     Ok(())
 }

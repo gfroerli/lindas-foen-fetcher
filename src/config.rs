@@ -6,6 +6,18 @@ use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use tracing::debug;
 
+/// Execution mode for the application
+#[derive(Debug, Clone, Default, Deserialize, Serialize)]
+pub enum RunMode {
+    /// Run once and exit
+    #[default]
+    #[serde(rename = "oneshot")]
+    Oneshot,
+    /// Run continuously in a loop
+    #[serde(rename = "loop")]
+    Loop,
+}
+
 /// Main configuration structure
 #[derive(Debug, Deserialize, Serialize)]
 pub struct Config {
@@ -17,6 +29,8 @@ pub struct Config {
     pub logging: Option<LoggingConfig>,
     /// Database configuration (optional, defaults to "measurements.db")
     pub database: Option<DatabaseConfig>,
+    /// Run configuration (optional, defaults to oneshot mode)
+    pub run: Option<RunConfig>,
 }
 
 /// Gfrörli configuration
@@ -40,6 +54,15 @@ pub struct LoggingConfig {
 pub struct DatabaseConfig {
     /// Path to SQLite database file
     pub path: String,
+}
+
+/// Run configuration
+#[derive(Debug, Deserialize, Serialize)]
+pub struct RunConfig {
+    /// Interval between runs in minutes (only used in loop mode, defaults to 5 minutes)
+    pub interval_minutes: u32,
+    /// Execution mode: oneshot (default) or loop
+    pub mode: Option<RunMode>,
 }
 
 /// Station configuration with FOEN station ID and Gfrörli sensor ID mapping
@@ -84,6 +107,19 @@ impl Config {
             .as_ref()
             .map(|d| d.path.as_str())
             .unwrap_or("measurements.db")
+    }
+
+    /// Get the run interval in minutes, with fallback to 5 minutes if not configured
+    pub fn run_interval_minutes(&self) -> u32 {
+        self.run.as_ref().map(|r| r.interval_minutes).unwrap_or(5)
+    }
+
+    /// Get the run mode, with fallback to oneshot if not configured
+    pub fn run_mode(&self) -> RunMode {
+        self.run
+            .as_ref()
+            .and_then(|r| r.mode.clone())
+            .unwrap_or_default()
     }
 
     /// Get all FOEN station IDs
@@ -133,6 +169,10 @@ mod tests {
             database: Some(DatabaseConfig {
                 path: "test.db".to_string(),
             }),
+            run: Some(RunConfig {
+                interval_minutes: 10,
+                mode: Some(RunMode::Oneshot),
+            }),
         };
         let toml_str = toml::to_string(&config).unwrap();
         let deserialized: Config = toml::from_str(&toml_str).unwrap();
@@ -170,6 +210,10 @@ mod tests {
             }),
             database: Some(DatabaseConfig {
                 path: "test.db".to_string(),
+            }),
+            run: Some(RunConfig {
+                interval_minutes: 10,
+                mode: Some(RunMode::Loop),
             }),
         };
 
